@@ -5,24 +5,17 @@
 
 import scala.util.control.Breaks._
 import java.util.concurrent.TimeUnit
-import scala.util.Sorting
+
 import scala.collection.mutable.ArrayBuffer
 import akka.actor._
 import collection.mutable
 import java.security.MessageDigest
 import scala.util.Random
-import akka.routing.BalancingPool
-import akka.routing._
-import akka.util._
-import com.typesafe.config.ConfigFactory
-import java.io.File
-import akka.pattern.Patterns._
-import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.apache.commons.codec.binary._
-import scala.collection.immutable.ListMap
+
 import collection.immutable.SortedMap
 case class startjob(numOfRequests: Int)
 case class findfingerTableSuccessor(entry: Int, pos: Int, initiator: ActorRef)
@@ -36,11 +29,9 @@ case class updateFingerTable(pos: Int, self: ActorRef)
 case class findFileWithHop(initiator: Int, k: Int, count: Int)
 case class updateOthers(initiator: ActorRef, pred: ActorRef, succ: ActorRef)
 case class increment(count: Int)
-//case class updateFingertable(newNode:ActorRef)
 case class findSuccessor(k: Int, initiator: ActorRef)
 case class fixSuccsessor(nodes: ActorRef)
 case class fixPredecessor(nodes: ActorRef)
-//case class findFile(k:BigInt)
 case class setFingerTable(map: SortedMap[Int, ActorRef])
 
 object mainDriver extends App {
@@ -55,7 +46,7 @@ object mainDriver extends App {
       val system = ActorSystem("ChordSimulator")
 
       var Env = system.actorOf(Props(new Chord(args(0).trim.toInt, args(1).trim.toInt)), name = "Chord")
-      //println("adadssdad")
+
       Env ! "initialize"
 
     }
@@ -85,12 +76,8 @@ class Nodes(Id: String, numNodes: Int) extends Actor {
     sha.update(stringwithseed.getBytes("UTF-8"))
     var digest = sha.digest();
     var digestj = java.util.Arrays.copyOf(digest, m / 8)
-    //println(" Chord digestj " + Hex.encodeHexString(digestj) + " digestj len= " + digestj.length)
-    // println("digest length->"+digest.length)
-    //var x:BigInt =BigInt(Hex.encodeHexString(digest),16)
     return (Hex.encodeHexString(digestj))
-    // var y:Int= (x % 10).toInt  //parseInt(Hex.encodeHexString(digest),16)
-    //return y
+
   }
 
   def receive = {
@@ -115,23 +102,7 @@ class Nodes(Id: String, numNodes: Int) extends Actor {
       tick = context.system.scheduler.schedule(Duration.create(10, TimeUnit.MILLISECONDS), Duration.create(1000, TimeUnit.MILLISECONDS), self, generateRequests(numOfRequests))
 
     }
-    /*
-    case updateFingertable(newNode:ActorRef)=> {
 
-      var entry:Int=0
-     var  newNodeID=Integer.parseInt(self.path.name)
-       for ((key,value) <- fingerTable) {
-         entry=((Integer.parseInt(value.path.name)+math.pow(2,key-1))% (math.pow(2,m).toInt)).toInt
-         if(entry<=newNodeID && newNodeID<Integer.parseInt(value.path.name)){
-           var fingerTableMap=scala.collection.mutable.Map[Int,ActorRef]() ++= fingerTable
-           fingerTableMap(key)=newNode
-           fingerTable=SortedMap.empty[Int,ActorRef] ++ fingerTableMap
-         }
-
-       }
-
-    }
-*/
     case updateOthers(initiator, p, s) => {
       var successor = Integer.parseInt(s.path.name)
       var predecessor = Integer.parseInt(p.path.name)
@@ -176,8 +147,6 @@ class Nodes(Id: String, numNodes: Int) extends Actor {
             }
 
           }
-          // entry=(((Integer.parseInt(self.path.name)+math.pow(2,key-1).toInt))% (math.pow(2,m).toInt)).toInt
-          // println("entry->"+entry)
 
         }
         println("updated finger table for " + self + " node->" + fingerTable)
@@ -293,7 +262,6 @@ class Nodes(Id: String, numNodes: Int) extends Actor {
       }
 
       if ((Integer.parseInt(pred.path.name) > Integer.parseInt(self.path.name)) && k > Integer.parseInt(self.path.name) && k > Integer.parseInt(pred.path.name)) {
-        //println("Successor found at->" + self.path.name)
         flag = true;
         initiator ! notifySucessorPredecessor(self, pred)
       }
@@ -319,21 +287,18 @@ class Nodes(Id: String, numNodes: Int) extends Actor {
       }
 
       if (!flag) {
-        ///println((k) + "not found in current node" + self.path.name + "sending query to " + succ)
-        // count+=1
+
         succ ! findSuccessor(k, initiator)
 
       }
     }
 
     case `printNeighbours` => {
-      //println(pred + "->" + self.path.name + "->" + succ)
     }
 
     case setNeighbours(p, s) => {
       this.pred = p
       this.succ = s
-      //println("Neighbours of " + Integer.parseInt(self.path.name) + " = " + Integer.parseInt(pred.path.name) + ", " + Integer.parseInt(succ.path.name))
     }
 
     case "fingerTable" => {
@@ -342,13 +307,11 @@ class Nodes(Id: String, numNodes: Int) extends Actor {
 
     case setFingerTable(fingTable) => {
       fingerTable = fingTable
-      //println("fingertable set:" + self.path.name + "fingertable->" + fingerTable)
     }
     case notifySucessorPredecessor(s, p) => {
 
       succ = s
       pred = p
-      //println("successor" + succ + "predecessor" + pred)
       self ! "init_fingerTable"
 
     }
@@ -369,31 +332,23 @@ class Nodes(Id: String, numNodes: Int) extends Actor {
     }
 
     case findfingerTableSuccessor(k, pos, initiator) => {
-      //var count = cnt
 
       var flag = false
 
       if (k <= Integer.parseInt(self.path.name)) {
         if (k == Integer.parseInt(self.path.name)) {
-          //println("Successor found at->" + self.path.name)
           flag = true;
           initiator ! updateFingerTable(pos, self)
-          // count=count+1
         } else if (k > Integer.parseInt(pred.path.name)) {
-          //println("Successor found at->" + self.path.name)
           flag = true;
           initiator ! updateFingerTable(pos, self)
-          // count=count+1
         } else if ((Integer.parseInt(pred.path.name) > Integer.parseInt(self.path.name))) {
-          //println("Successor found at->" + self.path.name)
           flag = true;
           initiator ! updateFingerTable(pos, self)
-          // count=count+1
         }
       }
 
       if ((Integer.parseInt(pred.path.name) > Integer.parseInt(self.path.name)) && k > Integer.parseInt(self.path.name) && k > Integer.parseInt(pred.path.name)) {
-        //println("Successor found at->" + self.path.name)
         flag = true;
         initiator ! updateFingerTable(pos, self)
       }
@@ -413,14 +368,12 @@ class Nodes(Id: String, numNodes: Int) extends Actor {
 
         if (minIndex != 0) {
           flag = true
-          //  count+=1
           fingerTable(minIndex) ! findfingerTableSuccessor(k, pos, initiator)
         }
       }
 
       if (!flag) {
-        ///println((k) + "not found in current node" + self.path.name + "sending query to " + succ)
-        // count+=1
+
         succ ! findfingerTableSuccessor(k, pos, initiator)
 
       }
@@ -446,20 +399,18 @@ class Chord(totalnodes: Int, NumRequests: Int) extends Actor {
 
   def populateFingertable(nodes: ArrayBuffer[ActorRef], numNodes: Int) = {
     val sortedNodes = nodes.sortWith(sortByMod)
-    //sortedNodes
 
     for (i <- 0 to numNodes - 1) {
-      //println("------" + i)
+
       var fingerTableMap = SortedMap[Int, ActorRef]()
       var k = Integer.parseInt(sortedNodes(i).path.name)
-      var n = (k) //% math.pow(2,numNodes).toInt).toInt
+      var n = (k)
       var l = 1
-      // n is ith node ; fill its fingertable
       while (l <= m) {
 
         var flag = true
-        // println("n->"+n)
-        var entry = ((n + math.pow(2, l - 1)) % (math.pow(2, m).toInt)).toInt //sharique wrong
+
+        var entry = ((n + math.pow(2, l - 1)) % (math.pow(2, m).toInt)).toInt
         var min = 99999
         var min_id = 0
 
@@ -483,11 +434,9 @@ class Chord(totalnodes: Int, NumRequests: Int) extends Actor {
 
       }
 
-      //nodes(i)! fingerTable(fingerTableMap)
-      val fingerTableSortedMap = SortedMap.empty[Int, ActorRef] ++ fingerTableMap
-      //fingerTableMap= mutable.Map.empty[Int,ActorRef]
 
-      // fingerTableMap ++=  fingerTableSortedMap
+      val fingerTableSortedMap = SortedMap.empty[Int, ActorRef] ++ fingerTableMap
+
       println("fingertable for node " + sortedNodes(i).path.name + " -> " + fingerTableSortedMap)
       sortedNodes(i) ! setFingerTable(fingerTableSortedMap)
 
@@ -503,12 +452,9 @@ class Chord(totalnodes: Int, NumRequests: Int) extends Actor {
     sha.update(stringwithseed.getBytes("UTF-8"))
     var digest = sha.digest();
     var digestj = java.util.Arrays.copyOf(digest, m / 8)
-    //println(" Chord digestj " + Hex.encodeHexString(digestj) + " digestj len= " + digestj.length)
-    // println("digest length->"+digest.length)
-    //var x:BigInt =BigInt(Hex.encodeHexString(digest),16)
+
     return (Hex.encodeHexString(digestj))
-    // var y:Int= (x % 10).toInt  //parseInt(Hex.encodeHexString(digest),16)
-    //return y
+
   }
 
   def receive = {
@@ -530,7 +476,6 @@ class Chord(totalnodes: Int, NumRequests: Int) extends Actor {
         nameStrings += name
       }
       nameStrings = nameStrings.distinct
-      //numNodes = nameStrings.length
 
       while (nameStrings.length < numNodes) {
         var st: String = hashKey("node " + Random.nextInt(10000000))
@@ -562,7 +507,6 @@ class Chord(totalnodes: Int, NumRequests: Int) extends Actor {
 
       // self ! fingerTableInit
       for (o <- 0 to numNodes - 1) {
-        //  sortedNodes(o) ! startjob(NumRequests)
       }
 
       //----------------Node Join---------------
